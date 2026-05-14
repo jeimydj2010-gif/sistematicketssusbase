@@ -176,7 +176,49 @@
   <script>
     const SUPABASE_URL = 'https://nuzhzroufdpbmdomwfaf.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_9GD88bBJ-wNPWFVfpH6WyA_WRjzNCYA';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let supabase = null;
+
+    function showBootError(message, detail = '') {
+      const loading = document.getElementById('loading-screen');
+      if (!loading) return;
+      loading.classList.remove('hidden');
+      loading.innerHTML = `
+        <div id="boot-error-card" class="bg-white border-t-4 border-instTomate rounded-2xl shadow-xl p-8 max-w-xl mx-4 text-center">
+          <i class="fa-solid fa-triangle-exclamation text-5xl text-instTomate mb-4"></i>
+          <h2 class="text-2xl font-bold text-instVerdeOscuro mb-2">No se pudo iniciar el sistema</h2>
+          <p class="text-gray-600 mb-4">${String(message || '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}</p>
+          ${detail ? `<pre class="text-left text-xs whitespace-pre-wrap bg-gray-50 border rounded-xl p-4 mb-4 text-gray-700 max-h-48 overflow-auto">${String(detail).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}</pre>` : ''}
+          <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <button onclick="location.reload()" class="px-4 py-2 rounded-xl bg-instVerdeOscuro text-white font-semibold hover:bg-instVerdeClaro">Reintentar</button>
+            <button onclick="localStorage.clear(); sessionStorage.clear(); location.href=location.origin+location.pathname" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200">Limpiar sesión</button>
+          </div>
+          <p class="text-xs text-gray-500 mt-4">Si el error menciona tablas o permisos, ejecuta nuevamente <b>schema.sql</b> en Supabase SQL Editor.</p>
+        </div>`;
+    }
+
+    window.addEventListener('error', e => {
+      console.error('Error global:', e.error || e.message);
+      showBootError('Ocurrió un error de JavaScript durante el inicio.', e.error?.stack || e.message);
+    });
+    window.addEventListener('unhandledrejection', e => {
+      console.error('Promesa rechazada:', e.reason);
+      showBootError('Una operación de Supabase no respondió correctamente.', e.reason?.message || e.reason);
+    });
+
+    if (!window.supabase || !window.supabase.createClient) {
+      showBootError('No se cargó la librería de Supabase desde el CDN.', 'Verifica conexión a internet o que GitHub Pages pueda cargar https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2');
+      throw new Error('Supabase JS SDK no cargó');
+    }
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+
+    function withTimeout(promise, ms, label) {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} tardó demasiado. Revisa conexión, URL del proyecto, publishable key y estado de Supabase.`)), ms))
+      ]);
+    }
 
     const defaultConfig = { categorias:['Soporte Técnico','Redes','Credenciales'], canales:['Portal Web','Correo','Teléfono'] };
     let currentUser = null, currentProfile = null, ticketsData = [], directorioData = [], agentsData = [], configData = defaultConfig;
@@ -198,16 +240,64 @@
       $('rating-ticket-id').textContent=t.id_str||t.id; $('rating-user-name').textContent=t.usuario_nombre||'Usuario'; $('rating-ticket-subject').textContent=t.asunto||'el incidente'; const stars=document.querySelectorAll('.star-rating i'); const texts=['Malo','Regular','Bueno','Muy Bueno','Excelente']; stars.forEach(star=>{star.onclick=e=>{const val=Number(e.target.dataset.value);$('rating-value').value=val;$('rating-text').textContent=texts[val-1];stars.forEach((s,i)=>s.classList.toggle('active',i<val));}}); $('rating-form').onsubmit=async e=>{e.preventDefault(); const rating=Number($('rating-value').value); if(!rating){showToast('Selecciona una calificación','error');return} $('btn-submit-rating').disabled=true; $('btn-submit-rating').innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Guardando...'; const {error:upErr}=await supabase.from('tickets').update({valoracion_calificacion:rating,valoracion_comentario:$('rating-comment').value,valoracion_fecha:new Date().toISOString(),rating_token:null}).eq('id',ticketId).eq('rating_token',token).is('valoracion_calificacion',null); if(upErr){$('rating-error-message').classList.remove('hidden');$('rating-error-message').textContent=upErr.message;$('btn-submit-rating').disabled=false;$('btn-submit-rating').textContent='Intentar nuevamente'} else closeRatingScreen('¡Gracias por tu opinión!') };
     }
 
-    async function initApp(){ if(isRatingRoute()){ await initRatingView(); return } const {data:{session}}=await supabase.auth.getSession(); if(session){currentUser=session.user; await loadProfile(); await loadAll(); showApp();} else showAuth(); $('loading-screen').classList.add('hidden'); }
+    async function initApp(){
+      try {
+        if(isRatingRoute()){ await initRatingView(); return }
+        const {data:{session}} = await withTimeout(supabase.auth.getSession(), 15000, 'Validación de sesión');
+        if(session){
+          currentUser=session.user;
+          await loadProfile();
+          await loadAll();
+          showApp();
+        } else {
+          showAuth();
+        }
+        $('loading-screen').classList.add('hidden');
+      } catch(error) {
+        console.error('Error initApp:', error);
+        showBootError('La aplicación no pudo validar la sesión o cargar los datos iniciales.', error?.message || error);
+      }
+    }
     function showAuth(){ $('auth-overlay').classList.remove('hidden'); $('auth-overlay').classList.add('flex'); $('app-container').classList.add('hidden'); }
     function showApp(){ $('auth-overlay').classList.add('hidden'); $('auth-overlay').classList.remove('flex'); $('app-container').classList.remove('hidden'); $('display-agent-name').textContent=currentProfile?.nombre_completo||currentUser.email; $('display-agent-role').textContent=currentProfile?.rol||'agent'; }
-    async function loadProfile(){ const {data,error}=await supabase.from('agentes').select('*').eq('auth_user_id',currentUser.id).maybeSingle(); if(!data){const name=currentUser.user_metadata?.full_name||currentUser.email; const {data:newP}=await supabase.from('agentes').insert({auth_user_id:currentUser.id,nombre_completo:name,email:currentUser.email,rol:currentUser.user_metadata?.role||'agent'}).select().single(); currentProfile=newP;} else currentProfile=data; }
-    async function loadAll(){ await Promise.all([loadConfig(),loadDirectory(),loadTickets(),loadAgents()]); actualizarSelectsConfig(); renderDirectorio(); renderTickets(); renderAgents(); populateDashboardFilters(); renderDashboard(); subscribeRealtime(); }
-    let subscribed=false; function subscribeRealtime(){ if(subscribed)return; subscribed=true; supabase.channel('public-changes').on('postgres_changes',{event:'*',schema:'public',table:'tickets'},()=>loadTickets().then(()=>{renderTickets();populateDashboardFilters();renderDashboard()})).on('postgres_changes',{event:'*',schema:'public',table:'directorio'},()=>loadDirectory().then(()=>renderDirectorio())).on('postgres_changes',{event:'*',schema:'public',table:'app_config'},()=>loadConfig().then(()=>{actualizarSelectsConfig();populateDashboardFilters()})).on('postgres_changes',{event:'*',schema:'public',table:'agentes'},()=>loadAgents().then(()=>renderAgents())).subscribe(); }
-    async function loadConfig(){ const {data}=await supabase.from('app_config').select('*').eq('id',1).maybeSingle(); configData=data?.config||defaultConfig; }
-    async function loadDirectory(){ const {data,error}=await supabase.from('directorio').select('*').order('nombres'); if(!error) directorioData=data||[]; }
-    async function loadTickets(){ const {data,error}=await supabase.from('tickets').select('*').order('created_at',{ascending:false}); if(!error) ticketsData=data||[]; }
-    async function loadAgents(){ const {data,error}=await supabase.from('agentes').select('*').order('created_at',{ascending:false}); if(!error) agentsData=data||[]; }
+    async function loadProfile(){
+      const {data,error}=await withTimeout(supabase.from('agentes').select('*').eq('auth_user_id',currentUser.id).maybeSingle(), 15000, 'Consulta de perfil de agente');
+      if(error) throw new Error(`No se pudo consultar la tabla agentes: ${error.message}`);
+      if(!data){
+        const name=currentUser.user_metadata?.full_name||currentUser.email;
+        const {data:newP,error:insertError}=await supabase.from('agentes').insert({auth_user_id:currentUser.id,nombre_completo:name,email:currentUser.email,rol:currentUser.user_metadata?.role||'agent'}).select().single();
+        if(insertError) throw new Error(`No se pudo crear el perfil del agente: ${insertError.message}`);
+        currentProfile=newP;
+      } else currentProfile=data;
+    }
+    async function safeLoad(label, fn){
+      try { await withTimeout(fn(), 20000, label); }
+      catch(e){ console.error(label, e); showToast(`${label}: ${e.message || e}`,'error'); }
+    }
+    async function loadAll(){
+      await safeLoad('Configuración', loadConfig);
+      await safeLoad('Directorio', loadDirectory);
+      await safeLoad('Tickets', loadTickets);
+      await safeLoad('Agentes', loadAgents);
+      try { actualizarSelectsConfig(); renderDirectorio(); renderTickets(); renderAgents(); populateDashboardFilters(); renderDashboard(); populateInformeFilters(); renderInformePreview(); }
+      catch(e){ console.error('Render inicial', e); showToast(`Vista inicial: ${e.message}`,'error'); }
+      subscribeRealtime();
+    }
+    let subscribed=false; function subscribeRealtime(){
+      if(subscribed)return; subscribed=true;
+      try{
+        supabase.channel('public-changes')
+          .on('postgres_changes',{event:'*',schema:'public',table:'tickets'},()=>loadTickets().then(()=>{renderTickets();populateDashboardFilters();renderDashboard();populateInformeFilters();renderInformePreview();}).catch(console.error))
+          .on('postgres_changes',{event:'*',schema:'public',table:'directorio'},()=>loadDirectory().then(()=>renderDirectorio()).catch(console.error))
+          .on('postgres_changes',{event:'*',schema:'public',table:'app_config'},()=>loadConfig().then(()=>{actualizarSelectsConfig();populateDashboardFilters();populateInformeFilters();}).catch(console.error))
+          .on('postgres_changes',{event:'*',schema:'public',table:'agentes'},()=>loadAgents().then(()=>renderAgents()).catch(console.error))
+          .subscribe();
+      } catch(e){ console.warn('Realtime no disponible:', e); }
+    }
+    async function loadConfig(){ const {data,error}=await supabase.from('app_config').select('*').eq('id',1).maybeSingle(); if(error) throw new Error(error.message); configData=data?.config||defaultConfig; }
+    async function loadDirectory(){ const {data,error}=await supabase.from('directorio').select('*').order('nombres'); if(error) throw new Error(error.message); directorioData=data||[]; }
+    async function loadTickets(){ const {data,error}=await supabase.from('tickets').select('*').order('created_at',{ascending:false}); if(error) throw new Error(error.message); ticketsData=data||[]; }
+    async function loadAgents(){ const {data,error}=await supabase.from('agentes').select('*').order('created_at',{ascending:false}); if(error) throw new Error(error.message); agentsData=data||[]; }
 
     function setAuthMode(mode){ ['login','register','reset'].forEach(m=>$(m+'-form').classList.toggle('hidden',m!==mode)); $('show-login').classList.toggle('hidden',mode==='login'); $('show-register').classList.toggle('hidden',mode==='register'); $('show-reset').classList.toggle('hidden',mode==='reset'); $('auth-title').textContent=mode==='login'?'Ingreso de Agentes':mode==='register'?'Registro de Agente':'Recuperar contraseña'; $('auth-subtitle').textContent=mode==='login'?'Accede con tu correo y contraseña institucional.':mode==='register'?'Crea tu usuario para operar el sistema.':'Recibirás un enlace de recuperación en tu correo.'; }
     $('show-login').onclick=()=>setAuthMode('login'); $('show-register').onclick=()=>setAuthMode('register'); $('show-reset').onclick=()=>setAuthMode('reset');
@@ -279,7 +369,13 @@
     window.resetDashboardFilters=resetDashboardFilters;
     function filteredDashboardData(){ const from=$('dash-from').value,to=$('dash-to').value,estado=$('dash-estado').value,cat=$('dash-categoria').value,ag=$('dash-agente').value; return ticketsData.filter(t=>{const d=(t.created_at||'').slice(0,10); return (!from||d>=from)&&(!to||d<=to)&&(!estado||t.estado===estado)&&(!cat||t.categoria===cat)&&(!ag||t.agente_nombre===ag);}); }
     function counts(arr,key){ return arr.reduce((o,t)=>{const k=t[key]||'Sin dato';o[k]=(o[k]||0)+1;return o},{}) }
-    function renderChart(id,type,labels,data,label){ if(charts[id])charts[id].destroy(); charts[id]=new Chart($(id),{type,data:{labels,datasets:[{label,data,borderWidth:2,borderRadius:5,tension:.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',display:type!=='bar'||id==='chartAgent'}},scales:type==='doughnut'||type==='pie'?{}:{y:{beginAtZero:true,ticks:{precision:0}}}}}); }
+    function renderChart(id,type,labels,data,label){
+      const canvas=$(id);
+      if(!canvas) return;
+      if(typeof Chart==='undefined') { console.warn('Chart.js no cargó; se omite gráfico', id); return; }
+      if(charts[id])charts[id].destroy();
+      charts[id]=new Chart(canvas,{type,data:{labels,datasets:[{label,data,borderWidth:2,borderRadius:5,tension:.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',display:type!=='bar'||id==='chartAgent'}},scales:type==='doughnut'||type==='pie'?{}:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+    }
     function renderDashboard(){ const data=filteredDashboardData(); const total=data.length,res=data.filter(t=>t.estado==='Resuelto').length,seg=total-res; const ratings=data.map(t=>t.valoracion_calificacion).filter(Boolean); $('kpi-total').textContent=total; $('kpi-resueltos').textContent=res; $('kpi-seguimiento').textContent=seg; $('kpi-rating').textContent=ratings.length?(ratings.reduce((a,b)=>a+b,0)/ratings.length).toFixed(1):'0.0'; $('kpi-resolution').textContent=total?Math.round(res*100/total)+'%':'0%'; const st=counts(data,'estado'),ct=counts(data,'categoria'),ag=counts(data,'agente_nombre'); const daily={}; data.forEach(t=>{const d=(t.created_at||todayISO()).slice(0,10);daily[d]=(daily[d]||0)+1}); const days=Object.keys(daily).sort(); renderChart('chartStatus','doughnut',Object.keys(st),Object.values(st),'Tickets'); renderChart('chartCategory','bar',Object.keys(ct),Object.values(ct),'Tickets'); renderChart('chartLine','line',days,days.map(d=>daily[d]),'Tickets por día'); renderChart('chartAgent','bar',Object.keys(ag),Object.values(ag),'Tickets por agente'); }
 
     supabase.auth.onAuthStateChange(async (event,session)=>{ if(event==='PASSWORD_RECOVERY'){showToast('Ingresa tu nueva contraseña desde el panel de Supabase Auth. Esta versión estática ya recibió la sesión.')} });
