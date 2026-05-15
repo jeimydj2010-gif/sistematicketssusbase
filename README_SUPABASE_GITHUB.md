@@ -167,3 +167,7 @@ La URL generada abre el sistema en modo login. Si el agente todavía no tiene cu
 ## Carga completa del directorio
 
 La versión actual consulta la tabla `directorio` por bloques de 1000 registros usando `.range()` hasta completar todos los registros disponibles. En la pantalla del módulo Directorio se agregó un filtro local y el contador muestra `filtrados / total`. No requiere cambios en `schema.sql`.
+
+## Ajuste de Informe Documental - Anexos horizontales
+
+La exportación del Informe Documental fue ajustada para que la sección **ANEXOS** use una tabla optimizada en orientación horizontal, con columnas fijas, tipografía Arial reducida, encabezados en verde institucional `#006068` y bordes visibles. En PDF la exportación usa orientación horizontal para evitar superposición de datos en tablas extensas.
