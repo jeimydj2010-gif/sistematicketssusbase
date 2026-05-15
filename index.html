@@ -165,7 +165,7 @@
           </div>
         </section>
 
-        <section id="tab-directorio" class="tab-content max-w-6xl mx-auto"><div class="flex items-center gap-3 mb-6"><div class="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center text-white shadow"><i class="fa-solid fa-users"></i></div><h2 class="text-2xl font-bold text-instVerdeOscuro">Directorio de Usuarios</h2></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6"><div class="bg-white p-6 rounded-2xl shadow-sm border h-fit"><h3 class="font-semibold text-instVerdeOscuro mb-4">Agregar Nuevo</h3><form id="form-directorio" class="space-y-4"><input type="text" id="dir-cedula" placeholder="Cédula *" required class="field"><input type="text" id="dir-nombres" placeholder="Nombres y Apellidos *" required class="field"><input type="email" id="dir-correo" placeholder="Correo Electrónico" class="field"><input type="text" id="dir-carrera" placeholder="Carrera / Área" class="field"><input type="text" id="dir-nivel" placeholder="Nivel" class="field"><select id="dir-tipo" class="field"><option>Estudiante</option><option>Docente</option><option>Administrativo</option></select><input type="text" id="dir-periodo" placeholder="Periodo" class="field"><button type="submit" class="btn btn-primary w-full py-2">Guardar Usuario</button></form></div><div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border overflow-hidden"><div class="p-4 border-b bg-gray-50 flex justify-between items-center"><h3 class="font-semibold">Registros Actuales</h3><span class="text-xs bg-instVerdeClaro text-white px-2 py-1 rounded-full" id="dir-count">0</span></div><div class="overflow-y-auto h-[430px]"><table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-gray-50 sticky top-0"><tr><th class="px-4 py-3">Cédula</th><th class="px-4 py-3">Nombres</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Acción</th></tr></thead><tbody id="directorio-table-body"></tbody></table></div></div></div></section>
+        <section id="tab-directorio" class="tab-content max-w-6xl mx-auto"><div class="flex items-center gap-3 mb-6"><div class="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center text-white shadow"><i class="fa-solid fa-users"></i></div><h2 class="text-2xl font-bold text-instVerdeOscuro">Directorio de Usuarios</h2></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6"><div class="bg-white p-6 rounded-2xl shadow-sm border h-fit"><h3 class="font-semibold text-instVerdeOscuro mb-4">Agregar Nuevo</h3><form id="form-directorio" class="space-y-4"><input type="text" id="dir-cedula" placeholder="Cédula *" required class="field"><input type="text" id="dir-nombres" placeholder="Nombres y Apellidos *" required class="field"><input type="email" id="dir-correo" placeholder="Correo Electrónico" class="field"><input type="text" id="dir-carrera" placeholder="Carrera / Área" class="field"><input type="text" id="dir-nivel" placeholder="Nivel" class="field"><select id="dir-tipo" class="field"><option>Estudiante</option><option>Docente</option><option>Administrativo</option></select><input type="text" id="dir-periodo" placeholder="Periodo" class="field"><button type="submit" class="btn btn-primary w-full py-2">Guardar Usuario</button></form></div><div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border overflow-hidden"><div class="p-4 border-b bg-gray-50 flex flex-col md:flex-row gap-3 md:items-center md:justify-between"><div><h3 class="font-semibold">Registros Actuales</h3><p class="text-xs text-gray-500">Se carga la base completa desde Supabase por bloques.</p></div><div class="flex items-center gap-2"><input type="text" id="filter-directorio" onkeyup="renderDirectorio()" placeholder="Filtrar directorio..." class="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-instVerdeClaro"><span class="text-xs bg-instVerdeClaro text-white px-2 py-1 rounded-full" id="dir-count">0</span></div></div><div class="overflow-y-auto h-[430px]"><table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-gray-50 sticky top-0"><tr><th class="px-4 py-3">Cédula</th><th class="px-4 py-3">Nombres</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Acción</th></tr></thead><tbody id="directorio-table-body"></tbody></table></div></div></div></section>
 
         <section id="tab-agentes" class="tab-content max-w-7xl mx-auto">
           <div class="flex items-center gap-3 mb-6"><div class="w-10 h-10 bg-indigo-500 rounded-lg flex items-center justify-center text-white shadow"><i class="fa-solid fa-users-gear"></i></div><div><h2 class="text-2xl font-bold text-instVerdeOscuro">Usuarios / Agentes</h2><p class="text-sm text-instPlomo">Administración de perfiles operativos y enlaces directos de ingreso.</p></div></div>
@@ -344,7 +344,24 @@
       } catch(e){ console.warn('Realtime no disponible:', e); }
     }
     async function loadConfig(){ const {data,error}=await sbClient.from('app_config').select('*').eq('id',1).maybeSingle(); if(error) throw new Error(error.message); configData=data?.config||defaultConfig; }
-    async function loadDirectory(){ const {data,error}=await sbClient.from('directorio').select('*').order('nombres'); if(error) throw new Error(error.message); directorioData=data||[]; }
+    async function loadDirectory(){
+      const pageSize = 1000;
+      let from = 0;
+      let allRows = [];
+      while (true) {
+        const {data,error}=await sbClient
+          .from('directorio')
+          .select('*')
+          .order('nombres', { ascending: true })
+          .range(from, from + pageSize - 1);
+        if(error) throw new Error(error.message);
+        const rows = data || [];
+        allRows = allRows.concat(rows);
+        if(rows.length < pageSize) break;
+        from += pageSize;
+      }
+      directorioData = allRows;
+    }
     async function loadTickets(){ const {data,error}=await sbClient.from('tickets').select('*').order('created_at',{ascending:false}); if(error) throw new Error(error.message); ticketsData=data||[]; }
     async function loadAgents(){ const {data,error}=await sbClient.from('agentes').select('*').order('created_at',{ascending:false}); if(error) throw new Error(error.message); agentsData=data||[]; }
 
@@ -390,7 +407,15 @@
     window.abrirModalLink=abrirModalLink; window.cerrarModalLink=()=>$('modal-link-valoracion').classList.remove('flex'); window.copiarUrlValoracion=async()=>{const val=$('url-valoracion').value; try{await navigator.clipboard.writeText(val)}catch(e){$('url-valoracion').select();document.execCommand('copy')} showToast('Enlace copiado')};
 
     $('form-directorio').onsubmit=async e=>{e.preventDefault(); const u={cedula:$('dir-cedula').value,nombres:$('dir-nombres').value,correo:$('dir-correo').value,carrera:$('dir-carrera').value,nivel:$('dir-nivel').value,tipo:$('dir-tipo').value,periodo:$('dir-periodo').value}; const {error}=await sbClient.from('directorio').insert(u); if(error)return showToast(error.message,'error'); e.target.reset(); showToast('Usuario guardado'); await loadDirectory(); renderDirectorio(); };
-    function renderDirectorio(){ $('dir-count').textContent=directorioData.length; $('empty-db-warning').classList.toggle('hidden',directorioData.length>0); $('directorio-table-body').innerHTML=directorioData.slice(0,100).map(u=>`<tr class="hover:bg-gray-50 border-b"><td class="px-4 py-3 font-medium">${esc(u.cedula)}</td><td class="px-4 py-3">${esc(u.nombres)}</td><td class="px-4 py-3 text-xs"><span class="bg-purple-100 text-purple-700 px-2 py-1 rounded">${esc(u.tipo)}</span></td><td class="px-4 py-3"><button onclick="eliminarUsuario('${u.id}')" class="text-red-500 hover:bg-red-50 p-1 rounded"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('')+(directorioData.length>100?`<tr><td colspan="4" class="text-center py-4 text-xs text-gray-500 bg-gray-50">Mostrando 100 de ${directorioData.length}. Usa el buscador para encontrar usuarios.</td></tr>`:''); }
+    function renderDirectorio(){
+      const filterInput = $('filter-directorio');
+      const term = (filterInput?.value || '').toLowerCase().trim();
+      const rows = directorioData.filter(u => !term || [u.cedula,u.nombres,u.tipo,u.correo,u.carrera,u.nivel,u.periodo].some(v => String(v||'').toLowerCase().includes(term)));
+      $('dir-count').textContent = `${rows.length} / ${directorioData.length}`;
+      $('empty-db-warning').classList.toggle('hidden',directorioData.length>0);
+      $('directorio-table-body').innerHTML = rows.map(u=>`<tr class="hover:bg-gray-50 border-b"><td class="px-4 py-3 font-medium">${esc(u.cedula)}</td><td class="px-4 py-3">${esc(u.nombres)}</td><td class="px-4 py-3 text-xs"><span class="bg-purple-100 text-purple-700 px-2 py-1 rounded">${esc(u.tipo)}</span></td><td class="px-4 py-3"><button onclick="eliminarUsuario('${u.id}')" class="text-red-500 hover:bg-red-50 p-1 rounded"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('');
+      if(!rows.length) $('directorio-table-body').innerHTML = '<tr><td colspan="4" class="text-center py-8 text-sm text-gray-500 bg-gray-50">No hay usuarios para mostrar con el filtro actual.</td></tr>';
+    }
     async function eliminarUsuario(id){ if(!confirm('¿Eliminar usuario del directorio?'))return; const {error}=await sbClient.from('directorio').delete().eq('id',id); if(error)return showToast(error.message,'error'); showToast('Usuario eliminado'); await loadDirectory(); renderDirectorio(); }
     window.eliminarUsuario=eliminarUsuario;
     function renderAgents(){

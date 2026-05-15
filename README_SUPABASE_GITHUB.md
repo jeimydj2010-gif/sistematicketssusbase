@@ -162,3 +162,8 @@ El módulo **Agentes** ahora permite a usuarios con rol `admin`:
 La URL generada abre el sistema en modo login. Si el agente todavía no tiene cuenta de Supabase Auth, puede usar la opción de registro con el correo y rol prellenados desde la invitación.
 
 > Nota: por seguridad, desde GitHub Pages no se debe usar `service_role`. Por eso esta mejora no crea ni borra usuarios directamente en Supabase Auth desde el navegador. La eliminación realizada en la app es lógica: cambia el perfil operativo a inactivo.
+
+
+## Carga completa del directorio
+
+La versión actual consulta la tabla `directorio` por bloques de 1000 registros usando `.range()` hasta completar todos los registros disponibles. En la pantalla del módulo Directorio se agregó un filtro local y el contador muestra `filtrados / total`. No requiere cambios en `schema.sql`.
