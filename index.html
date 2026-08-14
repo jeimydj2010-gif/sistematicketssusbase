@@ -354,7 +354,14 @@
         <button onclick="switchTab('tab-notificaciones')" id="btn-tab-notificaciones" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 text-white text-left"><i class="fa-solid fa-bell w-5 text-center"></i> Notificaciones <span id="notif-count-nav" class="notification-dot hidden ml-auto">0</span></button>
         <button onclick="switchTab('tab-auditoria')" id="btn-tab-auditoria" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 text-white text-left"><i class="fa-solid fa-shield-halved w-5 text-center"></i> Auditoría</button>
         <button onclick="switchTab('tab-config')" id="btn-tab-config" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 text-white text-left"><i class="fa-solid fa-gear w-5 text-center"></i> Configuración</button>
-        <a id="btn-turnero-pruebas" href="turnero-pruebas.html" class="hidden w-full items-center gap-3 px-4 py-3 rounded-xl border border-instTomate text-instTomate hover:bg-instTomate hover:text-white text-left font-bold"><i class="fa-solid fa-flask w-5 text-center"></i> Emisión, horarios y TV</a>
+        <div id="turnero-nav-group" class="hidden mt-3 pt-3 border-t border-white/15 space-y-1">
+          <p class="px-4 pb-1 text-[10px] uppercase tracking-[.22em] text-instVerdeClaro font-black">Turnero · Pruebas</p>
+          <a id="btn-turnero-recepcion" href="recepcion-turnero-pruebas.html" class="hidden w-full items-center gap-3 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/15 text-white text-left font-bold"><i class="fa-solid fa-ticket w-5 text-center text-instVerdeClaro"></i> Recepción guiada</a>
+          <a id="btn-turnero-panel" href="panel-atencion-turnero-pruebas.html" class="hidden w-full items-center gap-3 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/15 text-white text-left font-bold"><i class="fa-solid fa-headset w-5 text-center text-instVerdeClaro"></i> Panel de Atención</a>
+          <a id="btn-turnero-supervision" href="supervision-turnero-pruebas.html" class="hidden w-full items-center gap-3 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/15 text-white text-left font-bold"><i class="fa-solid fa-chart-line w-5 text-center text-instVerdeClaro"></i> Supervisión en vivo</a>
+          <a id="btn-turnero-tv" href="pantalla-turnos-pruebas.html" target="_blank" class="hidden w-full items-center gap-3 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/15 text-white text-left font-bold"><i class="fa-solid fa-tv w-5 text-center text-instVerdeClaro"></i> Pantalla TV</a>
+          <a id="btn-turnero-pruebas" href="turnero-pruebas.html" class="hidden w-full items-center gap-3 px-4 py-2.5 rounded-xl border border-instTomate text-instTomate hover:bg-instTomate hover:text-white text-left font-bold"><i class="fa-solid fa-sliders w-5 text-center"></i> Configuración turnero</a>
+        </div>
       </nav>
       <div class="p-4 border-t border-white/10"><button onclick="logout()" class="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-instTomate hover:bg-instTomate hover:text-white rounded-lg transition-colors border border-instTomate"><i class="fa-solid fa-sign-out-alt"></i> Cerrar sesión</button></div>
     </aside>
@@ -828,6 +835,7 @@
   <script>
     const SUPABASE_URL = window.TURNERO_SUPABASE?.url || '';
     const SUPABASE_KEY = window.TURNERO_SUPABASE?.anonKey || '';
+    const SUPABASE_CONFIG_READY = !!window.TURNERO_CONFIG?.isConfigured?.();
     let sbClient = null;
 
     function showBootError(message, detail = '') {
@@ -859,11 +867,11 @@
 
     if (!window.supabase || !window.supabase.createClient) {
       showBootError('No se cargó la librería de Supabase desde el CDN.', 'Verifica conexión a internet o que GitHub Pages pueda cargar https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2');
-      throw new Error('Supabase JS SDK no cargó');
+    } else if (SUPABASE_CONFIG_READY) {
+      sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+      });
     }
-    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-    });
 
     function withTimeout(promise, ms, label) {
       return Promise.race([
@@ -1020,7 +1028,12 @@
         const tab = btn.id ? btn.id.replace('btn-','') : '';
         btn.classList.toggle('hidden', !hasModuleAccess(tab));
       });
-      const turneroBtn=$('btn-turnero-pruebas'); if(turneroBtn){ turneroBtn.classList.toggle('hidden', !isAdmin()); turneroBtn.classList.toggle('flex', isAdmin()); }
+      const turneroEnabled = window.TURNERO_FEATURES?.turneroEnabled !== false;
+      const turneroAdmin = turneroEnabled && isAdmin();
+      const turneroOperator = turneroEnabled && (isAdmin() || ['secretaria','supervisora_secretaria','admin_secretaria'].includes(normalizeRole(currentProfile?.rol)));
+      const turneroGroup=$('turnero-nav-group'); if(turneroGroup) turneroGroup.classList.toggle('hidden', !(turneroAdmin||turneroOperator));
+      ['btn-turnero-recepcion','btn-turnero-supervision','btn-turnero-tv','btn-turnero-pruebas'].forEach(id=>{const el=$(id);if(el){el.classList.toggle('hidden',!turneroAdmin);el.classList.toggle('flex',turneroAdmin);}});
+      const turneroPanel=$('btn-turnero-panel'); if(turneroPanel){turneroPanel.classList.toggle('hidden',!turneroOperator);turneroPanel.classList.toggle('flex',turneroOperator);} 
       const active = document.querySelector('.tab-content.active');
       if(active && !hasModuleAccess(active.id)) switchTab(firstAllowedTab());
     }
@@ -1119,6 +1132,14 @@
       if(getParamRobust('open')==='sec-nueva') switchTab('tab-sec-nueva');
     }
     async function loadProfile(){
+      // V14.5: en el proyecto Supabase de pruebas el UUID de auth.users puede
+      // ser distinto al de produccion. Vincula de forma segura por el correo
+      // del usuario autenticado antes de aplicar restricciones por rol.
+      try{
+        const {data:syncData,error:syncError}=await withTimeout(sbClient.rpc('turnero_pruebas_sync_current_user'),15000,'Vinculación del usuario de pruebas');
+        if(!syncError && syncData?.success && syncData?.profile){ currentProfile=syncData.profile; return; }
+        if(syncError) console.warn('Vinculación automática no disponible:',syncError.message||syncError);
+      }catch(syncEx){ console.warn('No se pudo vincular automáticamente el usuario de pruebas:',syncEx); }
       const {data,error}=await withTimeout(sbClient.from('agentes').select('*').eq('auth_user_id',currentUser.id).maybeSingle(), 15000, 'Consulta de perfil de agente');
       if(error) throw new Error(`No se pudo consultar la tabla agentes: ${error.message}`);
 
@@ -3172,13 +3193,15 @@ Respuesta Soporte IT: ${comentario||'Requerimiento solucionado por Soporte IT.'}
     async function deleteSecTicket(id){ if(!confirm('¿Eliminar esta atención?'))return; const old=secretariaTicketsData.find(t=>String(t.id)===String(id)); const {error}=await sbClient.from('secretaria_tickets').delete().eq('id',id); if(error)return showToast(error.message,'error'); await secAudit('Eliminar atención','secretaria_tickets',id,old,null); await loadSecretariaData(); renderSecretariaModule(); }
     window.openSecEdit=openSecEdit; window.deleteSecTicket=deleteSecTicket;
 
-    sbClient.auth.onAuthStateChange(async (event,session)=>{ if(event==='PASSWORD_RECOVERY'){
-      $('loading-screen')?.classList.add('hidden');
-      showAuth();
-      setAuthMode('new-password');
-      showToast('Escribe tu nueva contraseña para completar la recuperación.');
-    } });
-    initApp();
+    if (SUPABASE_CONFIG_READY && sbClient) {
+      sbClient.auth.onAuthStateChange(async (event,session)=>{ if(event==='PASSWORD_RECOVERY'){
+        $('loading-screen')?.classList.add('hidden');
+        showAuth();
+        setAuthMode('new-password');
+        showToast('Escribe tu nueva contraseña para completar la recuperación.');
+      } });
+      initApp();
+    }
   </script>
 
   <script>

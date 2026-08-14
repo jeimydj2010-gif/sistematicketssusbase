@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Configurar Supabase de pruebas | Turnero Cordillera</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<style>
+:root{--verde:#00CE7C;--oscuro:#006068;--turq:#028B98;--tomate:#E47E3D}
+body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at 10% 10%,rgba(0,206,124,.18),transparent 28%),radial-gradient(circle at 90% 5%,rgba(2,139,152,.17),transparent 30%),#f4f8f7;min-height:100vh}
+.card{background:white;border:1px solid rgba(0,96,104,.15);border-radius:1.6rem;box-shadow:0 22px 60px rgba(0,96,104,.16)}
+.field{width:100%;padding:.9rem 1rem;border:1px solid #cbd5e1;border-radius:1rem;outline:none}.field:focus{border-color:var(--verde);box-shadow:0 0 0 4px rgba(0,206,124,.12)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.55rem;border-radius:1rem;padding:.85rem 1.1rem;font-weight:900}
+</style>
+</head>
+<body class="p-4 md:p-8">
+<main class="max-w-3xl mx-auto">
+  <section class="card overflow-hidden">
+    <div class="bg-gradient-to-r from-[#006068] via-[#028B98] to-[#006068] text-white p-6 md:p-8">
+      <div class="flex items-center gap-4">
+        <img src="logo-icono-cordillera.jpg" class="w-20 h-20 bg-white object-contain p-2 rounded-2xl border-2 border-[#00CE7C] shadow-xl" alt="Cordillera">
+        <div>
+          <p class="uppercase tracking-[.24em] text-xs text-white/70 font-bold">Turnero de pruebas V14.5</p>
+          <h1 class="text-2xl md:text-3xl font-black">Conectar Supabase de pruebas</h1>
+          <p class="text-white/75 mt-1">Esta pantalla evita que el proyecto use accidentalmente la base de producción.</p>
+        </div>
+      </div>
+    </div>
+    <div class="p-6 md:p-8">
+      <div class="rounded-2xl bg-orange-50 border border-orange-200 p-4 text-sm text-orange-900 mb-6">
+        <b>Importante:</b> usa la <b>Project URL</b> y la <b>Publishable/Anon key</b> del proyecto Supabase de pruebas. Nunca pegues la <code>service_role</code>.
+      </div>
+      <label class="font-black text-[#006068]">Project URL de pruebas</label>
+      <input id="url" class="field mt-2" placeholder="https://xxxxxxxxxxxxxxxxxxxx.supabase.co" autocomplete="off">
+      <label class="font-black text-[#006068] block mt-5">Publishable / Anon key de pruebas</label>
+      <textarea id="key" class="field mt-2 min-h-28 font-mono text-xs" placeholder="eyJ..."></textarea>
+      <div class="grid sm:grid-cols-2 gap-3 mt-6">
+        <button id="test" class="btn bg-[#028B98] text-white"><i class="fa-solid fa-plug-circle-check"></i> Probar conexión</button>
+        <button id="save" class="btn bg-[#00CE7C] text-[#006068]"><i class="fa-solid fa-floppy-disk"></i> Guardar y entrar</button>
+      </div>
+      <button id="clear" class="btn bg-gray-100 text-gray-600 w-full mt-3"><i class="fa-solid fa-eraser"></i> Borrar configuración guardada</button>
+      <div id="result" class="hidden rounded-2xl p-4 mt-5 text-sm"></div>
+      <div class="mt-7 border-t pt-5 text-sm text-gray-600 space-y-2">
+        <p><b>Instalación de base:</b> ejecuta primero <code>schema.sql</code> en Supabase SQL Editor.</p>
+        <p><b>Datos de prueba:</b> luego ejecuta los SQL de la carpeta <code>sql_datos_prueba_divididos</code> en orden.</p>
+        <p>La configuración guardada aquí queda solo en este navegador. Para todos los equipos, edita <code>supabase-config.js</code> y coloca allí la URL y la clave de pruebas.</p>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const params=new URLSearchParams(location.search);
+  const returnTo=params.get('return')||'index.html';
+  const existing=window.TURNERO_CONFIG?.get?.()||{};
+  if(window.TURNERO_CONFIG?.isConfigured?.()){
+    $('url').value=existing.url||'';
+    $('key').value=existing.anonKey||'';
+  }
+  function show(msg,ok){
+    const el=$('result'); el.classList.remove('hidden','bg-green-50','border-green-200','text-green-900','bg-red-50','border-red-200','text-red-900');
+    el.classList.add('border',ok?'bg-green-50':'bg-red-50',ok?'border-green-200':'border-red-200',ok?'text-green-900':'text-red-900'); el.textContent=msg;
+  }
+  function values(){return {url:$('url').value.trim().replace(/\/$/,''),anonKey:$('key').value.trim()};}
+  $('test').onclick=async()=>{
+    const cfg=values();
+    if(!window.TURNERO_CONFIG.validate(cfg)) return show('La URL o la clave no tienen un formato valido.',false);
+    try{
+      const client=window.supabase.createClient(cfg.url,cfg.anonKey,{auth:{persistSession:false,autoRefreshToken:false}});
+      const {error}=await client.from('agentes').select('id').limit(1);
+      if(error){
+        const text=String(error.message||error);
+        if(/does not exist|schema cache|relation/i.test(text)) return show('La conexión funciona, pero faltan tablas. Ejecuta schema.sql en ESTE proyecto Supabase de pruebas. Detalle: '+text,false);
+        return show('Supabase respondió, pero la consulta fue rechazada: '+text,false);
+      }
+      show('Conexión correcta. El proyecto de pruebas responde y la tabla agentes existe.',true);
+    }catch(e){show('No se pudo conectar: '+(e.message||e),false);}
+  };
+  $('save').onclick=()=>{
+    try{window.TURNERO_CONFIG.save(values()); show('Configuración guardada. Abriendo el sistema...',true); setTimeout(()=>location.href=returnTo,500);}
+    catch(e){show(e.message||String(e),false);}
+  };
+  $('clear').onclick=()=>{window.TURNERO_CONFIG.clear();$('url').value='';$('key').value='';show('Configuración local eliminada.',true);};
+})();
+</script>
+</body>
+</html>
