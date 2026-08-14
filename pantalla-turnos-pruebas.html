@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pantalla de turnos - Pruebas</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script>
 <style>
 :root{--verde:#00CE7C;--oscuro:#006068;--turquesa:#028B98;--tomate:#E47E3D}
 *{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#003f46;overflow:hidden}
@@ -32,7 +32,7 @@
 <button id="sound">🔊 Activar sonido</button>
 </div></main>
 <script>
-const sb=supabase.createClient('https://nuzhzroufdpbmdomwfaf.supabase.co','sb_publishable_9GD88bBJ-wNPWFVfpH6WyA_WRjzNCYA');
+const sb=supabase.createClient(window.TURNERO_SUPABASE?.url||'',window.TURNERO_SUPABASE?.anonKey||'');
 let lastVoice='',sound=false,sideInfo=false,lastData=null;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function shortCode(code){const v=String(code||'');const m=v.match(/(?:PRUEBA-)?([A-ZÁÉÍÓÚ0-9]+)-(?:\d{8}-)?(\d+)$/i);return m?`${m[1].toUpperCase()}-${String(m[2]).padStart(3,'0')}`:v||'---'}

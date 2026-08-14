@@ -10,7 +10,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <script>
     tailwind.config = { theme: { extend: { colors: { instVerdeClaro:'#00CE7C', instVerdeOscuro:'#006068', instTomate:'#E47E3D', instPlomo:'#666666', instBlanco:'#FFFFFF' }, fontFamily: { sans:['Inter','system-ui','sans-serif'] } } } }
@@ -826,8 +826,8 @@
 
   <script src="turnero-secretaria-integrado.js"></script>
   <script>
-    const SUPABASE_URL = 'https://mtdimlskhxbdktcgbhpu.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_rgqdxDUMvTCiTtyqbWq4pw_J3YHYNE6';
+    const SUPABASE_URL = window.TURNERO_SUPABASE?.url || '';
+    const SUPABASE_KEY = window.TURNERO_SUPABASE?.anonKey || '';
     let sbClient = null;
 
     function showBootError(message, detail = '') {

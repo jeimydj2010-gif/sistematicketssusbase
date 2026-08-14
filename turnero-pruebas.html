@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Turnero de Pruebas | Cordillera</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <script>tailwind.config={theme:{extend:{colors:{verde:'#00CE7C',oscuro:'#006068',tomate:'#E47E3D',plomo:'#666666'}}}}</script>
@@ -112,8 +112,8 @@
 </div>
 
 <script>
-const SUPABASE_URL='https://nuzhzroufdpbmdomwfaf.supabase.co';
-const SUPABASE_ANON_KEY='sb_publishable_9GD88bBJ-wNPWFVfpH6WyA_WRjzNCYA';
+const SUPABASE_URL=window.TURNERO_SUPABASE?.url||'';
+const SUPABASE_ANON_KEY=window.TURNERO_SUPABASE?.anonKey||'';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 const $=id=>document.getElementById(id), esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 let services=[],windowsData=[],secretaries=[],turns=[],reportRows=[],schedules=[],scheduleServices=[],exceptions=[],secretaryStates=[],profile=null,lastVoice=null,studentFound=false,studentTimer=null,currentStudent=null;

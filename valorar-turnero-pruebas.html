@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Valoración del turnero de pruebas</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <script>tailwind.config={theme:{extend:{colors:{verde:'#00CE7C',oscuro:'#006068',tomate:'#E47E3D'}}}}</script>
   <style>body{font-family:Inter,system-ui,sans-serif}.card{background:#fff;border:1px solid #e5e7eb;border-radius:1.5rem;box-shadow:0 12px 40px #0002}.star{font-size:2.8rem;color:#d1d5db;cursor:pointer;transition:.15s}.star.active,.star:hover{color:#f59e0b}.field{width:100%;padding:.85rem;border:1px solid #d1d5db;border-radius:.9rem}.btn{border-radius:.9rem;font-weight:800;padding:.8rem 1.1rem}</style>
@@ -28,8 +28,8 @@
   </div>
 </div>
 <script>
-const SUPABASE_URL='https://nuzhzroufdpbmdomwfaf.supabase.co';
-const SUPABASE_ANON_KEY='sb_publishable_9GD88bBJ-wNPWFVfpH6WyA_WRjzNCYA';
+const SUPABASE_URL=window.TURNERO_SUPABASE?.url||'';
+const SUPABASE_ANON_KEY=window.TURNERO_SUPABASE?.anonKey||'';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY),$=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const token=new URLSearchParams(location.search).get('token')||'';let rating=0;
 async function init(){try{if(!token)throw new Error('El enlace de valoración no es válido.');const {data,error}=await sb.rpc('turnero_pruebas_valoracion_obtener',{p_token:token});if(error)throw error;if(!data?.length)throw new Error('El enlace no existe o el requerimiento no está habilitado para valoración.');const t=data[0];$('loading').classList.add('hidden');if(t.ya_valorado){$('already').classList.remove('hidden');$('already-text').textContent=`Calificación registrada: ${t.valoracion_calificacion} de 5.`;return;}$('detail').innerHTML=`<p><span class="text-gray-500">Turno:</span><br><b class="text-oscuro text-lg">${esc(t.codigo)}</b></p><p><span class="text-gray-500">Servicio:</span><br><b>${esc(t.servicio)}</b></p><p><span class="text-gray-500">Atendido por:</span><br><b>${esc(t.secretaria)}</b></p><p><span class="text-gray-500">Ventanilla:</span><br><b>${esc(t.ventanilla)}</b></p>`;$('form').classList.remove('hidden')}catch(e){$('loading').classList.add('hidden');$('error').classList.remove('hidden');$('error').innerHTML='<i class="fa-solid fa-triangle-exclamation mr-2"></i>'+esc(e.message)}}
