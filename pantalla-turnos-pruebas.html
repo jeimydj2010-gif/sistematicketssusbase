@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pantalla de turnos - Pruebas</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--verde:#00CE7C;--oscuro:#006068;--turquesa:#028B98;--tomate:#E47E3D}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#003f46;overflow:hidden}
+.shell{min-height:100vh;color:#fff;position:relative;overflow:hidden;background:radial-gradient(circle at 7% 12%,rgba(0,206,124,.55),transparent 28%),radial-gradient(circle at 92% 13%,rgba(2,139,152,.65),transparent 34%),radial-gradient(circle at 80% 93%,rgba(228,126,61,.30),transparent 30%),linear-gradient(135deg,#003b42 0%,#006068 43%,#028B98 76%,#004d55 100%)}
+.shell:before,.shell:after{content:"";position:absolute;border-radius:999px;border:1px solid rgba(255,255,255,.12);filter:blur(.2px)}.shell:before{width:34vw;height:34vw;left:-12vw;bottom:-18vw;box-shadow:0 0 90px rgba(0,206,124,.18)}.shell:after{width:26vw;height:26vw;right:-10vw;top:-12vw;box-shadow:0 0 90px rgba(2,139,152,.25)}
+.content{position:relative;z-index:2;min-height:100vh;display:flex;flex-direction:column;padding:clamp(1rem,2.4vw,2.5rem)}
+.header{display:flex;align-items:center;justify-content:space-between;gap:1.5rem;padding-bottom:1.2rem;border-bottom:1px solid rgba(255,255,255,.20)}
+.logo-card{width:min(430px,48vw);height:clamp(82px,9vw,116px);display:flex;align-items:center;padding:1rem 1.25rem;border-radius:1.4rem;background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(235,255,247,.94));border:3px solid rgba(0,206,124,.72);box-shadow:0 0 0 8px rgba(0,206,124,.12),0 20px 45px rgba(0,0,0,.25)}.logo-card img{width:100%;height:100%;object-fit:contain;object-position:left center;filter:drop-shadow(0 5px 8px rgba(0,96,104,.18))}
+.mode{text-align:right}.mode-badge{display:inline-flex;align-items:center;gap:.55rem;background:rgba(0,206,124,.18);border:1px solid rgba(0,206,124,.55);color:#79F4C0;padding:.55rem .9rem;border-radius:999px;font-weight:900;letter-spacing:.05em}.clock{font-size:clamp(1rem,1.8vw,1.55rem);font-weight:800;margin-top:.65rem;text-shadow:0 3px 12px rgba(0,0,0,.24)}
+.stage{flex:1;display:grid;grid-template-columns:minmax(0,2.2fr) minmax(310px,.8fr);gap:clamp(1rem,2.2vw,2rem);align-items:center;padding:clamp(1.4rem,3vw,3rem) 0}
+.call-card{min-width:0;text-align:center;padding:clamp(1.5rem,3vw,3rem);border-radius:2rem;background:linear-gradient(145deg,rgba(255,255,255,.13),rgba(255,255,255,.055));border:1px solid rgba(255,255,255,.20);box-shadow:0 24px 65px rgba(0,0,0,.20);backdrop-filter:blur(12px)}
+.eyebrow{text-transform:uppercase;letter-spacing:.36em;font-size:clamp(.95rem,1.6vw,1.4rem);color:rgba(255,255,255,.72);font-weight:700}.code{font-size:clamp(4rem,10vw,10rem);line-height:.95;font-weight:1000;color:var(--verde);white-space:nowrap;text-shadow:0 9px 30px rgba(0,0,0,.27),0 0 35px rgba(0,206,124,.18);margin-top:clamp(1.2rem,2.8vw,2.4rem)}.full-code{display:inline-block;margin-top:1rem;padding:.42rem .8rem;border-radius:999px;background:rgba(0,0,0,.16);color:rgba(255,255,255,.74);font-size:clamp(.72rem,1.2vw,1rem);letter-spacing:.06em}.window{font-size:clamp(2rem,4.3vw,4.4rem);font-weight:950;margin-top:clamp(1.3rem,2.4vw,2.2rem);color:#fff;text-shadow:0 7px 22px rgba(0,0,0,.24)}
+.glass{background:linear-gradient(145deg,rgba(255,255,255,.18),rgba(255,255,255,.08));border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(14px);box-shadow:0 22px 55px rgba(0,0,0,.20);border-radius:2rem;padding:clamp(1rem,2vw,1.7rem);max-height:66vh;overflow:auto}.glass h2{font-size:clamp(1.4rem,2.3vw,2.2rem);font-weight:950;margin:0 0 1rem}.last-item{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:1rem;padding:.9rem 1rem;border-radius:1.15rem;background:linear-gradient(110deg,rgba(0,206,124,.16),rgba(255,255,255,.08));border-left:4px solid var(--verde);margin-bottom:.7rem}.last-code{font-size:clamp(1.05rem,1.7vw,1.45rem);font-weight:950;color:#70F1B9;white-space:nowrap}.last-window{font-size:clamp(.95rem,1.5vw,1.25rem);font-weight:800;text-align:right}
+.footer{display:flex;align-items:center;justify-content:center;gap:.65rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.18);font-size:clamp(.85rem,1.3vw,1.1rem);color:rgba(255,255,255,.68)}
+#sound{position:fixed;z-index:10;right:1.2rem;bottom:1.2rem;border:0;border-radius:1rem;background:linear-gradient(135deg,#E47E3D,#F2A56E);color:#fff;padding:.85rem 1.15rem;font-weight:900;box-shadow:0 14px 30px rgba(228,126,61,.35);cursor:pointer}
+@media(max-width:900px){body{overflow:auto}.stage{grid-template-columns:1fr}.glass{max-height:none}.code{font-size:clamp(3rem,15vw,7rem)}.logo-card{width:min(380px,58vw)}}
+</style>
+</head>
+<body>
+<main class="shell"><div class="content">
+<header class="header"><div class="logo-card"><img src="LOGO-UNIVERSITARIO-HORIZONTAL_nuevo.png" alt="Tecnológico Universitario Cordillera"></div><div class="mode"><div class="mode-badge">● MODO DE PRUEBAS</div><div id="clock" class="clock"></div></div></header>
+<section class="stage"><div class="call-card"><div class="eyebrow">Turno llamado</div><div id="code" class="code">---</div><div id="full-code" class="full-code">En espera</div><div id="window" class="window">En espera de llamada</div></div><aside class="glass"><h2 id="side-title">Últimos llamados</h2><div id="side-content"></div></aside></section>
+<footer class="footer">● Comprobantes y llamadas sin validez operativa</footer>
+<button id="sound">🔊 Activar sonido</button>
+</div></main>
+<script>
+const sb=supabase.createClient('https://nuzhzroufdpbmdomwfaf.supabase.co','sb_publishable_9GD88bBJ-wNPWFVfpH6WyA_WRjzNCYA');
+let lastVoice='',sound=false,sideInfo=false,lastData=null;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function shortCode(code){const v=String(code||'');const m=v.match(/(?:PRUEBA-)?([A-ZÁÉÍÓÚ0-9]+)-(?:\d{8}-)?(\d+)$/i);return m?`${m[1].toUpperCase()}-${String(m[2]).padStart(3,'0')}`:v||'---'}
+function speak(t){const key=String(t?.id||'')+'|'+String(t?.hora_ultima_llamada||'');if(!sound||!t||lastVoice===key)return;lastVoice=key;if('speechSynthesis'in window){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(`Turno ${shortCode(t.codigo).replaceAll('-',' ')}, dirigirse a la ventanilla ${t.ventanilla_numero||''}`);u.lang='es-EC';u.rate=.82;u.pitch=1;speechSynthesis.speak(u)}}
+function renderSide(){if(!lastData)return;const rows=lastData.turnos||[],cola=(lastData.cola||[]).filter(x=>Number(x.en_espera)>0),msg=lastData.config?.mensaje_institucional||'Bienvenidos al Tecnológico Universitario Cordillera';document.getElementById('side-title').textContent=sideInfo?'Información de atención':'Últimos llamados';document.getElementById('side-content').innerHTML=sideInfo?`<div class="last-item" style="display:block"><b class="last-code">${esc(msg)}</b><p style="margin:.7rem 0 0;color:rgba(255,255,255,.75)">Cola actual por servicio</p></div>${cola.slice(0,6).map(x=>`<div class="last-item"><b class="last-code">${esc(x.nombre)}</b><span class="last-window">${x.en_espera} en espera</span></div>`).join('')||'<p style="color:rgba(255,255,255,.55)">Sin personas en espera.</p>'}`:rows.slice(0,6).map(x=>`<div class="last-item"><b class="last-code">${esc(shortCode(x.codigo))}</b><span class="last-window">${esc(x.ventanilla_nombre||'-')}</span></div>`).join('')||'<p style="color:rgba(255,255,255,.55)">Sin llamadas.</p>'}
+async function load(){const {data,error}=await sb.rpc('turnero_pruebas_tv_datos');if(error)return console.error(error);lastData=data||{};const rows=data?.turnos||[],current=rows.find(x=>x.estado==='Llamando')||rows[0];document.getElementById('code').textContent=current?shortCode(current.codigo):'---';document.getElementById('full-code').textContent=current?.codigo||'En espera';document.getElementById('window').textContent=current?'Diríjase a '+(current.ventanilla_nombre||'la ventanilla asignada'):'En espera de llamada';renderSide();if(current?.estado==='Llamando')speak(current)}
+document.getElementById('sound').onclick=()=>{sound=true;document.getElementById('sound').textContent='🔊 Sonido activado';load()};
+setInterval(()=>document.getElementById('clock').textContent=new Intl.DateTimeFormat('es-EC',{timeZone:'America/Guayaquil',dateStyle:'medium',timeStyle:'medium'}).format(new Date()),1000);setInterval(load,2000);setInterval(()=>{sideInfo=!sideInfo;renderSide()},12000);load();
+</script>
+</body></html>

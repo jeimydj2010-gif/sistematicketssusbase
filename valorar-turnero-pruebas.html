@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Valoración del turnero de pruebas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <script>tailwind.config={theme:{extend:{colors:{verde:'#00CE7C',oscuro:'#006068',tomate:'#E47E3D'}}}}</script>
+  <style>body{font-family:Inter,system-ui,sans-serif}.card{background:#fff;border:1px solid #e5e7eb;border-radius:1.5rem;box-shadow:0 12px 40px #0002}.star{font-size:2.8rem;color:#d1d5db;cursor:pointer;transition:.15s}.star.active,.star:hover{color:#f59e0b}.field{width:100%;padding:.85rem;border:1px solid #d1d5db;border-radius:.9rem}.btn{border-radius:.9rem;font-weight:800;padding:.8rem 1.1rem}</style>
+</head>
+<body class="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+<div class="card w-full max-w-2xl overflow-hidden">
+  <div class="bg-oscuro text-white p-6 text-center"><img src="LOGO-UNIVERSITARIO-HORIZONTAL_nuevo.png" class="h-16 mx-auto object-contain mb-3" alt="Cordillera"><h1 class="text-2xl font-black">Valoración de atención</h1><p class="text-verde font-bold mt-1"><i class="fa-solid fa-flask mr-1"></i>ENTORNO DE PRUEBAS</p></div>
+  <div class="p-6 md:p-8">
+    <div id="loading" class="text-center py-8"><i class="fa-solid fa-spinner fa-spin text-5xl text-verde"></i><p class="mt-3 text-gray-600">Validando enlace...</p></div>
+    <div id="error" class="hidden rounded-xl border border-red-300 bg-red-50 p-4 text-red-800"></div>
+    <div id="already" class="hidden text-center py-8"><i class="fa-solid fa-star text-6xl text-yellow-500"></i><h2 class="text-2xl font-black text-oscuro mt-4">Esta atención ya fue valorada</h2><p id="already-text" class="text-gray-600 mt-2"></p></div>
+    <div id="success" class="hidden text-center py-8"><i class="fa-solid fa-circle-check text-6xl text-verde"></i><h2 class="text-2xl font-black text-oscuro mt-4">¡Gracias por su valoración!</h2><p class="text-gray-600 mt-2">La calificación fue registrada únicamente en el módulo de pruebas.</p></div>
+    <form id="form" class="hidden">
+      <div id="detail" class="rounded-xl bg-gray-50 p-4 mb-6 text-sm grid sm:grid-cols-2 gap-3"></div>
+      <div class="text-center"><p class="font-bold text-gray-700">¿Cómo califica la atención recibida?</p><div id="stars" class="flex justify-center gap-2 my-4"><button type="button" class="star" data-value="1">★</button><button type="button" class="star" data-value="2">★</button><button type="button" class="star" data-value="3">★</button><button type="button" class="star" data-value="4">★</button><button type="button" class="star" data-value="5">★</button></div><p id="rating-label" class="text-sm text-gray-500">Seleccione de 1 a 5 estrellas.</p></div>
+      <div class="mt-6"><label class="font-bold text-gray-700">Comentario <span id="required" class="text-red-600 hidden">(obligatorio para 1 a 3 estrellas)</span></label><textarea id="comment" rows="4" class="field mt-2" placeholder="Cuéntenos sobre la atención recibida..."></textarea></div>
+      <button class="btn bg-verde text-white w-full mt-6"><i class="fa-solid fa-paper-plane mr-2"></i>Enviar valoración de prueba</button>
+    </form>
+    <p class="text-xs text-center text-gray-400 mt-6">Esta página no altera los reportes oficiales.</p>
+  </div>
+</div>
+<script>
+const SUPABASE_URL='https://nuzhzroufdpbmdomwfaf.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_9GD88bBJ-wNPWFVfpH6WyA_WRjzNCYA';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY),$=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const token=new URLSearchParams(location.search).get('token')||'';let rating=0;
+async function init(){try{if(!token)throw new Error('El enlace de valoración no es válido.');const {data,error}=await sb.rpc('turnero_pruebas_valoracion_obtener',{p_token:token});if(error)throw error;if(!data?.length)throw new Error('El enlace no existe o el requerimiento no está habilitado para valoración.');const t=data[0];$('loading').classList.add('hidden');if(t.ya_valorado){$('already').classList.remove('hidden');$('already-text').textContent=`Calificación registrada: ${t.valoracion_calificacion} de 5.`;return;}$('detail').innerHTML=`<p><span class="text-gray-500">Turno:</span><br><b class="text-oscuro text-lg">${esc(t.codigo)}</b></p><p><span class="text-gray-500">Servicio:</span><br><b>${esc(t.servicio)}</b></p><p><span class="text-gray-500">Atendido por:</span><br><b>${esc(t.secretaria)}</b></p><p><span class="text-gray-500">Ventanilla:</span><br><b>${esc(t.ventanilla)}</b></p>`;$('form').classList.remove('hidden')}catch(e){$('loading').classList.add('hidden');$('error').classList.remove('hidden');$('error').innerHTML='<i class="fa-solid fa-triangle-exclamation mr-2"></i>'+esc(e.message)}}
+document.querySelectorAll('.star').forEach(s=>s.onclick=()=>{rating=Number(s.dataset.value);document.querySelectorAll('.star').forEach(x=>x.classList.toggle('active',Number(x.dataset.value)<=rating));$('rating-label').textContent=['','Muy insatisfecho','Insatisfecho','Regular','Satisfecho','Muy satisfecho'][rating];$('required').classList.toggle('hidden',rating>3)});
+$('form').onsubmit=async e=>{e.preventDefault();if(!rating)return alert('Selecciona una calificación.');const comment=$('comment').value.trim();if(rating<=3&&!comment)return alert('Escribe un comentario para esta calificación.');const btn=e.submitter;btn.disabled=true;const {error}=await sb.rpc('turnero_pruebas_valoracion_guardar',{p_token:token,p_calificacion:rating,p_comentario:comment||null});btn.disabled=false;if(error)return alert(error.message);$('form').classList.add('hidden');$('success').classList.remove('hidden')};
+init();
+</script>
+</body>
+</html>
